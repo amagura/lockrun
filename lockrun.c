@@ -60,6 +60,7 @@
 #include "tino/proc.h"
 #include "tino/getopt.h"
 
+#include <mcheck.h>
 #include <fcntl.h>
 #include <errno.h>
 
@@ -211,7 +212,7 @@ main(int argc, char **argv)
 		      "		This variable is only present for -o or -t"
 		      , &lockfd_env,
 		      "LOCKRUNFD",
-#endif		      
+#endif
 		      TINO_GETOPT_FLAG
 		      TINO_GETOPT_MIN
 		      "q	quiet, do not print anything"
@@ -223,7 +224,7 @@ main(int argc, char **argv)
 		      "		Incompatible with -u"
 		      TINO_GETOPT_FLAG
 		      , &direct_run,
-#endif		      
+#endif
 		      TINO_GETOPT_FLAG
 		      "s	get a shared lock (default: exclusive)"
 		      , &shared,
@@ -243,7 +244,7 @@ main(int argc, char **argv)
 		      "		Use twice for more verbosity"
 		      , &verbose,
 		      2,
-		      
+
 		      TINO_GETOPT_LONGINT
 		      TINO_GETOPT_TIMESPEC
 		      "w time	maximum wait time, 0 is unlimited"
@@ -381,16 +382,21 @@ main(int argc, char **argv)
   if (verbose>0)
     fprintf(stderr, "%s: got lock\n", argv[argn]);
 
+  mtrace();
   env[0]	= *env_name ? tino_str_printf("%s=%s%lu", env_name, (env_append ? env_append : ""), (unsigned long)getpid()) : 0;
   env[1]	= 0;
   pid	= tino_fork_exec(0, 1, 2, argv+argn, env, 1, NULL);
+  muntrace();
   if (verbose>0)
     fprintf(stderr, "%s: running as PID %ld\n", argv[argn], (long)pid);
 
-  ret	= tino_wait_child_exact(pid, &cause);
+  ret  = tino_wait_child_exact(pid, &cause);
   if (cause && verbose>=0)
     fprintf(stderr, "%s: %s\n", argv[argn], cause);
 
+  /* XXX fixes two memory leaks that I found using Valgrind */
+  tino_freeO(env[0]);
+  tino_freeO(cause);
   if (create_unlink)
     {
       /* If somebody else keeps a lock on the file,
