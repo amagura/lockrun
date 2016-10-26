@@ -60,7 +60,6 @@
 #include "tino/proc.h"
 #include "tino/getopt.h"
 
-#include <mcheck.h>
 #include <fcntl.h>
 #include <errno.h>
 
@@ -382,11 +381,9 @@ main(int argc, char **argv)
   if (verbose>0)
     fprintf(stderr, "%s: got lock\n", argv[argn]);
 
-  mtrace();
   env[0]	= *env_name ? tino_str_printf("%s=%s%lu", env_name, (env_append ? env_append : ""), (unsigned long)getpid()) : 0;
   env[1]	= 0;
   pid	= tino_fork_exec(0, 1, 2, argv+argn, env, 1, NULL);
-  muntrace();
   if (verbose>0)
     fprintf(stderr, "%s: running as PID %ld\n", argv[argn], (long)pid);
 
